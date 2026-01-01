@@ -2,6 +2,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -163,9 +164,11 @@ export default function HomeScreen() {
 
   if (!isLoaded) {
     return (
-      <View style={{ flex: 1, padding: 16, justifyContent: "center", backgroundColor: palette.background }}>
-        <Text style={{ fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>
+        <View style={{ flex: 1, padding: 16, justifyContent: "center" }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -182,10 +185,11 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: palette.background }}
-      contentContainerStyle={{ padding: 16, gap: 14 }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }} edges={["top"]}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 14 }}
+      >
       {/* 初回起動の説明カード */}
       {showIntro && (
         <View
@@ -379,5 +383,6 @@ export default function HomeScreen() {
         ※ MVP：写真はまだ保存しません（ラベルのみ）。後でカメラ/ギャラリー対応できます。
       </Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }

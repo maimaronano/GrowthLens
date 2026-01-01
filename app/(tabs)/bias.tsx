@@ -2,6 +2,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -124,10 +125,11 @@ export default function BiasScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: palette.background }}
-      contentContainerStyle={{ padding: 16, gap: 12 }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }} edges={["top"]}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 12 }}
+      >
       <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>🔍 Bias Check</Text>
       <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
         観測の傾向をやさしくフィードバックします
@@ -165,5 +167,6 @@ export default function BiasScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
