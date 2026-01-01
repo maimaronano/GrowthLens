@@ -3,6 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+
 import type { GrowthLog, LogTag } from "../../src/domain/log";
 import { STORAGE_KEY_INTRO, TAGS } from "../../src/domain/log";
 import { loadLogs, saveLogs } from "../../src/storage/logStorage";
@@ -11,9 +14,11 @@ import { loadLogs, saveLogs } from "../../src/storage/logStorage";
 function TagSelector({
   value,
   onChange,
+  palette,
 }: {
   value: LogTag;
   onChange: (t: LogTag) => void;
+  palette: (typeof Colors)["light"];
 }) {
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -24,15 +29,19 @@ function TagSelector({
             key={t}
             onPress={() => onChange(t)}
             style={{
-              paddingVertical: 8,
-              paddingHorizontal: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
               borderRadius: 999,
               borderWidth: 1,
-              borderColor: active ? "#2563eb" : "#e2e8f0",
-              backgroundColor: active ? "#2563eb" : "#fff",
+              borderColor: active ? palette.tint : palette.border,
+              backgroundColor: active ? palette.accentSurface : palette.card,
+              shadowColor: "#00000018",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
             }}
           >
-            <Text style={{ color: active ? "#fff" : "#0f172a", fontWeight: "700" }}>
+            <Text style={{ color: active ? palette.accentText : palette.text, fontWeight: "700" }}>
               {t}
             </Text>
           </Pressable>
@@ -61,6 +70,8 @@ export default function HomeScreen() {
   const [note, setNote] = useState("");
   const [photoLabel, setPhotoLabel] = useState("");
   const [tag, setTag] = useState<LogTag>("探索");
+  const colorScheme = useColorScheme() ?? "light";
+  const palette = Colors[colorScheme];
 
   const [logs, setLogs] = useState<GrowthLog[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -152,34 +163,47 @@ export default function HomeScreen() {
 
   if (!isLoaded) {
     return (
-      <View style={{ flex: 1, padding: 16, justifyContent: "center" }}>
-        <Text style={{ fontSize: 16, fontWeight: "700" }}>読み込み中...</Text>
+      <View style={{ flex: 1, padding: 16, justifyContent: "center", backgroundColor: palette.background }}>
+        <Text style={{ fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
       </View>
     );
   }
 
+  const cardStyle = {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.border,
+    shadowColor: "#00000015",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  };
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: palette.background }}
+      contentContainerStyle={{ padding: 16, gap: 14 }}
+    >
       {/* 初回起動の説明カード */}
       {showIntro && (
         <View
           style={{
-            padding: 16,
-            borderRadius: 12,
-            backgroundColor: "#eff6ff",
-            gap: 10,
-            borderWidth: 1,
-            borderColor: "#bfdbfe",
+            ...cardStyle,
+            gap: 12,
+            backgroundColor: palette.cardSoft,
+            borderColor: palette.border,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800" }}>GrowthLens へようこそ</Text>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>GrowthLens へようこそ</Text>
 
-          <Text style={{ color: "#1e3a8a" }}>
+          <Text style={{ color: palette.muted }}>
             このアプリは、子どもの「できた・できない」ではなく、
             日々のちょっとした変化や気づきを記録するためのものです。
           </Text>
 
-          <Text style={{ color: "#1e3a8a" }}>
+          <Text style={{ color: palette.muted }}>
             ・記録は端末内にのみ保存されます{"\n"}
             ・診断や評価は行いません{"\n"}
             ・比較や共有はありません
@@ -188,58 +212,91 @@ export default function HomeScreen() {
           <Pressable
             onPress={onCloseIntro}
             style={{
-              backgroundColor: "#2563eb",
+              backgroundColor: palette.tint,
               paddingVertical: 10,
-              borderRadius: 10,
+              borderRadius: 12,
               alignItems: "center",
+              shadowColor: "#00000025",
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
             }}
           >
-            <Text style={{ color: "white", fontWeight: "800" }}>はじめる</Text>
+            <Text style={{ color: palette.card, fontWeight: "800" }}>はじめる</Text>
           </Pressable>
         </View>
       )}
 
-      <Text style={{ fontSize: 22, fontWeight: "800" }}>Home（Growth Signal）</Text>
-      <Text style={{ color: "#64748b" }}>タグ＋一言で記録。端末内に保存されます（MVP）</Text>
+      <Text style={{ fontSize: 24, fontWeight: "800", color: palette.text }}>
+        Home（Growth Signal）
+      </Text>
+      <Text style={{ color: palette.muted }}>タグ＋一言で記録。端末内に保存されます（MVP）</Text>
 
-      <View style={{ padding: 12, borderRadius: 12, backgroundColor: "#f1f5f9" }}>
-        <Text style={{ fontWeight: "800" }}>成長シグナル（簡易）</Text>
-        <Text style={{ marginTop: 6, color: "#475569" }}>{signal}</Text>
+      <View
+        style={{
+          ...cardStyle,
+          backgroundColor: palette.accentSurface,
+          borderColor: palette.border,
+          gap: 6,
+        }}
+      >
+        <Text style={{ fontWeight: "800", color: palette.accentText }}>成長シグナル（簡易）</Text>
+        <Text style={{ marginTop: 6, color: palette.text }}>{signal}</Text>
       </View>
 
-      <View style={{ padding: 12, borderRadius: 12, backgroundColor: "white", gap: 10 }}>
-        <Text style={{ fontSize: 16, fontWeight: "800" }}>今日の記録</Text>
+      <View style={{ ...cardStyle, gap: 12 }}>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>今日の記録</Text>
 
-        <Text style={{ fontSize: 12, color: "#334155" }}>写真（仮ラベル・任意）</Text>
+        <Text style={{ fontSize: 13, color: palette.muted }}>写真（仮ラベル・任意）</Text>
         <TextInput
           value={photoLabel}
           onChangeText={setPhotoLabel}
           placeholder="例：公園の滑り台"
-          style={{ borderWidth: 1, borderColor: "#e2e8f0", padding: 12, borderRadius: 12 }}
+          placeholderTextColor={palette.muted}
+          style={{
+            borderWidth: 1,
+            borderColor: palette.border,
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: palette.cardSoft,
+            color: palette.text,
+          }}
         />
 
-        <Text style={{ fontSize: 12, color: "#334155" }}>タグ</Text>
-        <TagSelector value={tag} onChange={setTag} />
+        <Text style={{ fontSize: 13, color: palette.muted }}>タグ</Text>
+        <TagSelector value={tag} onChange={setTag} palette={palette} />
 
-        <Text style={{ fontSize: 12, color: "#334155" }}>一言メモ（必須）</Text>
+        <Text style={{ fontSize: 13, color: palette.muted }}>一言メモ（必須）</Text>
         <TextInput
           value={note}
           onChangeText={setNote}
           placeholder="例：今日は指差しが増えた"
-          style={{ borderWidth: 1, borderColor: "#e2e8f0", padding: 12, borderRadius: 12 }}
+          placeholderTextColor={palette.muted}
+          style={{
+            borderWidth: 1,
+            borderColor: palette.border,
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: palette.cardSoft,
+            color: palette.text,
+          }}
           multiline
         />
 
         <Pressable
           onPress={onAdd}
           style={{
-            backgroundColor: "#2563eb",
-            padding: 12,
-            borderRadius: 12,
+            backgroundColor: palette.tint,
+            padding: 14,
+            borderRadius: 14,
             alignItems: "center",
+            shadowColor: "#00000020",
+            shadowOpacity: 0.16,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 3 },
           }}
         >
-          <Text style={{ color: "white", fontWeight: "800" }}>記録する</Text>
+          <Text style={{ color: palette.card, fontWeight: "800" }}>記録する</Text>
         </Pressable>
 
         {/* 危険操作：全削除（赤） */}
@@ -247,49 +304,52 @@ export default function HomeScreen() {
           onPress={onClearAll}
           disabled={logs.length === 0}
           style={{
-            backgroundColor: logs.length === 0 ? "#fecaca" : "#dc2626",
+            backgroundColor: logs.length === 0 ? palette.danger : "#f29b9b",
             padding: 12,
-            borderRadius: 12,
+            borderRadius: 14,
             alignItems: "center",
             borderWidth: 1,
-            borderColor: logs.length === 0 ? "#fca5a5" : "#b91c1c",
+            borderColor: logs.length === 0 ? palette.dangerBorder : "#f07272",
             opacity: logs.length === 0 ? 0.6 : 1,
           }}
         >
-          <Text style={{ color: "white", fontWeight: "800" }}>すべて削除</Text>
+          <Text style={{ color: palette.text, fontWeight: "800" }}>すべて削除</Text>
         </Pressable>
       </View>
 
-      <View style={{ padding: 12, borderRadius: 12, backgroundColor: "white", gap: 10 }}>
-        <Text style={{ fontSize: 16, fontWeight: "800" }}>
+      <View style={{ ...cardStyle, gap: 12 }}>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>
           記録一覧（最新が上）{" "}
-          <Text style={{ color: "#64748b", fontSize: 12 }}>({logs.length}件)</Text>
+          <Text style={{ color: palette.muted, fontSize: 13 }}>({logs.length}件)</Text>
         </Text>
 
         {logs.length === 0 ? (
-          <Text style={{ color: "#64748b" }}>まだ記録がありません</Text>
+          <Text style={{ color: palette.muted }}>まだ記録がありません</Text>
         ) : (
           logs.map((l) => (
             <View
               key={l.id}
               style={{
-                padding: 12,
-                borderRadius: 12,
+                padding: 14,
+                borderRadius: 14,
                 borderWidth: 1,
-                borderColor: "#e2e8f0",
+                borderColor: palette.border,
                 gap: 6,
+                backgroundColor: palette.cardSoft,
               }}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-                <Text style={{ color: "#64748b", fontSize: 12 }}>
+                <Text style={{ color: palette.muted, fontSize: 12 }}>
                   {new Date(l.createdAt).toLocaleString()}
                 </Text>
-                <Text style={{ color: "#2563eb", fontSize: 12, fontWeight: "800" }}>{l.tag}</Text>
+                <Text style={{ color: palette.accentText, fontSize: 12, fontWeight: "800" }}>
+                  {l.tag}
+                </Text>
               </View>
 
-              {l.photoLabel ? <Text style={{ color: "#64748b" }}>📷 {l.photoLabel}</Text> : null}
+              {l.photoLabel ? <Text style={{ color: palette.muted }}>📷 {l.photoLabel}</Text> : null}
 
-              <Text>{l.note}</Text>
+              <Text style={{ color: palette.text }}>{l.note}</Text>
 
               <Pressable
                 onPress={() => onDeleteOne(l.id)}
@@ -299,17 +359,19 @@ export default function HomeScreen() {
                   paddingVertical: 8,
                   paddingHorizontal: 10,
                   borderRadius: 10,
-                  backgroundColor: "#f1f5f9",
+                  backgroundColor: palette.card,
+                  borderWidth: 1,
+                  borderColor: palette.border,
                 }}
               >
-                <Text style={{ color: "#0f172a", fontWeight: "700" }}>削除</Text>
+                <Text style={{ color: palette.text, fontWeight: "700" }}>削除</Text>
               </Pressable>
             </View>
           ))
         )}
       </View>
 
-      <Text style={{ color: "#94a3b8", fontSize: 12 }}>
+      <Text style={{ color: palette.muted, fontSize: 12 }}>
         ※ MVP：写真はまだ保存しません（ラベルのみ）。後でカメラ/ギャラリー対応できます。
       </Text>
     </ScrollView>

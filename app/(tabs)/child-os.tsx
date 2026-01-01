@@ -3,6 +3,8 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { GrowthLog } from "../../src/domain/log";
 import { loadLogs } from "../../src/storage/logStorage";
 
@@ -121,6 +123,8 @@ function buildChildOS(logs: GrowthLog[]): ModuleView[] {
 export default function ChildOSScreen() {
   const [logs, setLogs] = useState<GrowthLog[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const colorScheme = useColorScheme() ?? "light";
+  const palette = Colors[colorScheme];
 
   const reload = useCallback(() => {
     (async () => {
@@ -149,30 +153,45 @@ export default function ChildOSScreen() {
 
   const modules = useMemo(() => buildChildOS(logs), [logs]);
 
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
-      <Text style={{ fontSize: 22, fontWeight: "800" }}>Child OS</Text>
-      <Text style={{ color: "#64748b" }}>Homeの記録から自動生成（直近7日 vs 前7日）</Text>
+  const cardStyle = {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.border,
+    shadowColor: "#00000015",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  };
 
-      <View style={{ padding: 12, borderRadius: 12, backgroundColor: "#f1f5f9" }}>
-        <Text style={{ fontWeight: "800" }}>ログ件数</Text>
-        <Text style={{ marginTop: 6, color: "#475569" }}>
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: palette.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
+      <Text style={{ fontSize: 22, fontWeight: "800", color: palette.text }}>Child OS</Text>
+      <Text style={{ color: palette.muted }}>Homeの記録から自動生成（直近7日 vs 前7日）</Text>
+
+      <View style={{ ...cardStyle, backgroundColor: palette.accentSurface }}>
+        <Text style={{ fontWeight: "800", color: palette.accentText }}>ログ件数</Text>
+        <Text style={{ marginTop: 6, color: palette.text }}>
           {loaded ? `${logs.length} 件` : "読み込み中..."}
         </Text>
-        <Text style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+        <Text style={{ marginTop: 6, color: palette.muted, fontSize: 12 }}>
           Homeで記録を追加してこのタブを開くと、状態が更新されます
         </Text>
       </View>
 
       {modules.map((m) => (
-        <View key={m.key} style={{ padding: 12, borderRadius: 12, backgroundColor: "white" }}>
-          <Text style={{ fontWeight: "800" }}>{m.name}</Text>
-          <Text style={{ marginTop: 6, fontWeight: "800" }}>{m.status}</Text>
-          <Text style={{ marginTop: 6, color: "#475569" }}>{m.hint}</Text>
+        <View key={m.key} style={cardStyle}>
+          <Text style={{ fontWeight: "800", color: palette.text }}>{m.name}</Text>
+          <Text style={{ marginTop: 6, fontWeight: "800", color: palette.accentText }}>{m.status}</Text>
+          <Text style={{ marginTop: 6, color: palette.text }}>{m.hint}</Text>
         </View>
       ))}
 
-      <Text style={{ color: "#64748b", marginTop: 4 }}>
+      <Text style={{ color: palette.muted, marginTop: 4 }}>
         ※ MVPはルールベース。後で重み付け/AI要約に進化できます。
       </Text>
     </ScrollView>
