@@ -1,15 +1,18 @@
 // app/(tabs)/index.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { BannerAdComponent } from "@/components/ads/banner-ad";
 
 import type { GrowthLog, LogTag } from "../../src/domain/log";
-import { STORAGE_KEY_INTRO, TAGS } from "../../src/domain/log";
-import { loadLogs, saveLogs } from "../../src/storage/logStorage";
+import { STORAGE_KEY_INTRO, TAGS, validateLog, VALIDATION } from "../../src/domain/log";
+import { loadLogs, saveLogs, clearAllLogs } from "../../src/storage/logStorage";
 
 // ---- UI: Tag selector (button chips) ----
 function TagSelector({
@@ -68,6 +71,7 @@ function newId() {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [note, setNote] = useState("");
   const [photoLabel, setPhotoLabel] = useState("");
   const [tag, setTag] = useState<LogTag>("探索");
@@ -76,17 +80,27 @@ export default function HomeScreen() {
 
   const [logs, setLogs] = useState<GrowthLog[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saving, setSaving] = useState(false); // 連打防止
+  const [error, setError] = useState(""); // エラー表示
 
   // 初回起動説明カード
   const [showIntro, setShowIntro] = useState(false);
+
+  // ログを読み込む関数
+  const reloadLogs = useCallback(async () => {
+    try {
+      const data = await loadLogs();
+      setLogs(data);
+    } catch (e) {
+      console.warn("Failed to load logs:", e);
+    }
+  }, []);
 
   // 起動時：端末から読み込み（logs + introSeen）
   useEffect(() => {
     (async () => {
       try {
-        const data = await loadLogs();
-        setLogs(data);
-
+        await reloadLogs();
         const introSeen = await AsyncStorage.getItem(STORAGE_KEY_INTRO);
         if (!introSeen) setShowIntro(true);
       } catch (e) {
@@ -95,19 +109,16 @@ export default function HomeScreen() {
         setIsLoaded(true);
       }
     })();
-  }, []);
+  }, [reloadLogs]);
 
-  // logs が変わるたび保存（読み込み完了後のみ）
-  useEffect(() => {
-    if (!isLoaded) return;
-    (async () => {
-      try {
-        await saveLogs(logs);
-      } catch (e) {
-        console.warn("Failed to save logs:", e);
+  // タブを開くたびに再読み込み（編集画面から戻ってきた時に反映）
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoaded) {
+        reloadLogs();
       }
-    })();
-  }, [logs, isLoaded]);
+    }, [isLoaded, reloadLogs])
+  );
 
   const signal = useMemo(() => makeSimpleSignal(logs), [logs]);
 
@@ -119,28 +130,43 @@ export default function HomeScreen() {
     }
   };
 
-  const onAdd = () => {
-    const trimmed = note.trim();
-    if (!trimmed) return;
+  const onAdd = async () => {
+    if (saving) return; // 連打防止
 
-    const newLog: GrowthLog = {
-      id: newId(),
-      createdAt: new Date().toISOString(),
-      tag,
-      note: trimmed,
-      photoLabel: photoLabel.trim() || undefined,
-    };
+    setError(""); // エラーをクリア
 
-    setLogs([newLog, ...logs]);
+    // バリデーション
+    const validation = validateLog({ note, photoLabel, tag });
+    if (!validation.valid) {
+      setError(validation.error || "入力内容を確認してください");
+      return;
+    }
 
-    // 入力リセット
-    setNote("");
-    setPhotoLabel("");
-    setTag("探索");
-  };
+    setSaving(true);
+    try {
+      const newLog: GrowthLog = {
+        id: newId(),
+        createdAt: new Date().toISOString(),
+        tag,
+        note: note.trim(),
+        photoLabel: photoLabel.trim() || undefined,
+      };
 
-  const onDeleteOne = (id: string) => {
-    setLogs(logs.filter((l) => l.id !== id));
+      const updatedLogs = [newLog, ...logs];
+      await saveLogs(updatedLogs);
+      setLogs(updatedLogs);
+
+      // 入力リセット
+      setNote("");
+      setPhotoLabel("");
+      setTag("探索");
+      setError("");
+    } catch (e: any) {
+      console.error("Failed to save log:", e);
+      setError(e.message || "保存に失敗しました。もう一度お試しください。");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onClearAll = () => {
@@ -154,19 +180,30 @@ export default function HomeScreen() {
         {
           text: "すべて削除",
           style: "destructive",
-          onPress: () => {
-            setLogs([]); // 保存は useEffect(saveLogs) が担当
+          onPress: async () => {
+            try {
+              await clearAllLogs();
+              setLogs([]);
+            } catch (e) {
+              console.error("Failed to clear logs:", e);
+              Alert.alert("エラー", "削除に失敗しました");
+            }
           },
         },
       ]
     );
   };
 
+  const onLogPress = (logId: string) => {
+    router.push(`/log-detail?id=${logId}`);
+  };
+
   if (!isLoaded) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>
-        <View style={{ flex: 1, padding: 16, justifyContent: "center" }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
+        <View style={{ flex: 1, padding: 16, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={palette.tint} />
+          <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
         </View>
       </SafeAreaView>
     );
@@ -238,6 +275,9 @@ export default function HomeScreen() {
         赤ちゃんの成長の瞬間を記録しましょう
       </Text>
 
+      {/* バナー広告 */}
+      <BannerAdComponent />
+
       <View
         style={{
           ...cardStyle,
@@ -250,6 +290,13 @@ export default function HomeScreen() {
         <Text style={{ marginTop: 6, color: palette.text, lineHeight: 22 }}>{signal}</Text>
       </View>
 
+      {/* エラー表示 */}
+      {error ? (
+        <View style={{ ...cardStyle, backgroundColor: palette.danger, borderColor: palette.dangerBorder }}>
+          <Text style={{ color: palette.text, fontWeight: "700" }}>⚠️ {error}</Text>
+        </View>
+      ) : null}
+
       <View style={{ ...cardStyle, gap: 12 }}>
         <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>✏️ 今日の記録</Text>
 
@@ -259,6 +306,8 @@ export default function HomeScreen() {
           onChangeText={setPhotoLabel}
           placeholder="例：公園の滑り台"
           placeholderTextColor={palette.muted}
+          maxLength={VALIDATION.PHOTO_LABEL_MAX_LENGTH}
+          editable={!saving}
           style={{
             borderWidth: 2,
             borderColor: palette.border,
@@ -269,6 +318,9 @@ export default function HomeScreen() {
             fontSize: 15,
           }}
         />
+        <Text style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
+          {photoLabel.length}/{VALIDATION.PHOTO_LABEL_MAX_LENGTH}
+        </Text>
 
         <Text style={{ fontSize: 13, color: palette.muted }}>タグ</Text>
         <TagSelector value={tag} onChange={setTag} palette={palette} />
@@ -279,6 +331,8 @@ export default function HomeScreen() {
           onChangeText={setNote}
           placeholder="例：今日は指差しが増えた"
           placeholderTextColor={palette.muted}
+          maxLength={VALIDATION.NOTE_MAX_LENGTH}
+          editable={!saving}
           style={{
             borderWidth: 2,
             borderColor: palette.border,
@@ -290,11 +344,15 @@ export default function HomeScreen() {
           }}
           multiline
         />
+        <Text style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
+          {note.length}/{VALIDATION.NOTE_MAX_LENGTH}
+        </Text>
 
         <Pressable
           onPress={onAdd}
+          disabled={saving}
           style={{
-            backgroundColor: palette.tint,
+            backgroundColor: saving ? palette.border : palette.tint,
             padding: 16,
             borderRadius: 20,
             alignItems: "center",
@@ -304,13 +362,17 @@ export default function HomeScreen() {
             shadowOffset: { width: 0, height: 2 },
           }}
         >
-          <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>📝 記録する</Text>
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>📝 記録する</Text>
+          )}
         </Pressable>
 
         {/* 危険操作：全削除（赤） */}
         <Pressable
           onPress={onClearAll}
-          disabled={logs.length === 0}
+          disabled={logs.length === 0 || saving}
           style={{
             backgroundColor: logs.length === 0 ? palette.danger : "#FFCCCB",
             padding: 14,
@@ -318,7 +380,7 @@ export default function HomeScreen() {
             alignItems: "center",
             borderWidth: 1,
             borderColor: logs.length === 0 ? palette.dangerBorder : "#FFB3B3",
-            opacity: logs.length === 0 ? 0.6 : 1,
+            opacity: logs.length === 0 || saving ? 0.6 : 1,
           }}
         >
           <Text style={{ color: palette.text, fontWeight: "800" }}>すべて削除</Text>
@@ -326,17 +388,23 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ ...cardStyle, gap: 12 }}>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>
-          📚 記録一覧 {" "}
-          <Text style={{ color: palette.muted, fontSize: 14 }}>({logs.length}件)</Text>
-        </Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>
+            📚 記録一覧 {" "}
+            <Text style={{ color: palette.muted, fontSize: 14 }}>({logs.length}件)</Text>
+          </Text>
+          <Pressable onPress={() => router.push("/log-list")}>
+            <Text style={{ color: palette.tint, fontSize: 14, fontWeight: "700" }}>すべて表示 →</Text>
+          </Pressable>
+        </View>
 
         {logs.length === 0 ? (
           <Text style={{ color: palette.muted, lineHeight: 22 }}>まだ記録がありません</Text>
         ) : (
           logs.map((l) => (
-            <View
+            <Pressable
               key={l.id}
+              onPress={() => onLogPress(l.id)}
               style={{
                 padding: 16,
                 borderRadius: 20,
@@ -348,7 +416,7 @@ export default function HomeScreen() {
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
                 <Text style={{ color: palette.muted, fontSize: 12 }}>
-                  {new Date(l.createdAt).toLocaleString()}
+                  {new Date(l.createdAt).toLocaleString("ja-JP")}
                 </Text>
                 <Text style={{ color: palette.accentText, fontSize: 12, fontWeight: "800" }}>
                   {l.tag}
@@ -357,24 +425,14 @@ export default function HomeScreen() {
 
               {l.photoLabel ? <Text style={{ color: palette.muted }}>📷 {l.photoLabel}</Text> : null}
 
-              <Text style={{ color: palette.text, lineHeight: 20 }}>{l.note}</Text>
+              <Text style={{ color: palette.text, lineHeight: 20 }} numberOfLines={2}>
+                {l.note}
+              </Text>
 
-              <Pressable
-                onPress={() => onDeleteOne(l.id)}
-                style={{
-                  marginTop: 4,
-                  alignSelf: "flex-end",
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                  borderRadius: 16,
-                  backgroundColor: palette.card,
-                  borderWidth: 1,
-                  borderColor: palette.border,
-                }}
-              >
-                <Text style={{ color: palette.text, fontWeight: "700" }}>削除</Text>
-              </Pressable>
-            </View>
+              <Text style={{ color: palette.tint, fontSize: 12, fontWeight: "700", marginTop: 4 }}>
+                タップして編集 →
+              </Text>
+            </Pressable>
           ))
         )}
       </View>
