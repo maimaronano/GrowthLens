@@ -3,6 +3,8 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { GrowthLog, LogTag } from "../../src/domain/log";
 import { TAGS } from "../../src/domain/log";
 import { loadLogs } from "../../src/storage/logStorage";
@@ -81,6 +83,8 @@ function buildBias(logs: GrowthLog[]) {
 export default function BiasScreen() {
   const [logs, setLogs] = useState<GrowthLog[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const colorScheme = useColorScheme() ?? "light";
+  const palette = Colors[colorScheme];
 
   const reload = useCallback(() => {
     (async () => {
@@ -107,42 +111,56 @@ export default function BiasScreen() {
 
   const result = useMemo(() => buildBias(logs), [logs]);
 
+  const cardStyle = {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.border,
+    shadowColor: "#00000015",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  };
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
-      <Text style={{ fontSize: 22, fontWeight: "800" }}>Bias Check</Text>
-      <Text style={{ color: "#64748b" }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: palette.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
+      <Text style={{ fontSize: 22, fontWeight: "800", color: palette.text }}>Bias Check</Text>
+      <Text style={{ color: palette.muted }}>
         観測の傾向をやさしくフィードバックします
       </Text>
 
       {!loaded ? (
-        <Text>読み込み中...</Text>
+        <Text style={{ color: palette.muted }}>読み込み中...</Text>
       ) : (
         <>
-          <View style={{ padding: 12, borderRadius: 12, backgroundColor: "white" }}>
-            <Text style={{ fontWeight: "800" }}>記録の頻度</Text>
-            <Text style={{ marginTop: 6, color: "#475569" }}>{result.frequency}</Text>
+          <View style={cardStyle}>
+            <Text style={{ fontWeight: "800", color: palette.text }}>記録の頻度</Text>
+            <Text style={{ marginTop: 6, color: palette.text }}>{result.frequency}</Text>
           </View>
 
-          <View style={{ padding: 12, borderRadius: 12, backgroundColor: "white" }}>
-            <Text style={{ fontWeight: "800" }}>観測の偏り</Text>
-            <Text style={{ marginTop: 6, color: "#475569" }}>{result.bias}</Text>
+          <View style={cardStyle}>
+            <Text style={{ fontWeight: "800", color: palette.text }}>観測の偏り</Text>
+            <Text style={{ marginTop: 6, color: palette.text }}>{result.bias}</Text>
           </View>
 
-          <View style={{ padding: 12, borderRadius: 12, backgroundColor: "white" }}>
-            <Text style={{ fontWeight: "800" }}>メモの粒度</Text>
-            <Text style={{ marginTop: 6, color: "#475569" }}>{result.granularity}</Text>
+          <View style={cardStyle}>
+            <Text style={{ fontWeight: "800", color: palette.text }}>メモの粒度</Text>
+            <Text style={{ marginTop: 6, color: palette.text }}>{result.granularity}</Text>
           </View>
 
           <View
             style={{
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: "#f1f5f9",
+              ...cardStyle,
+              backgroundColor: palette.accentSurface,
               marginTop: 6,
             }}
           >
-            <Text style={{ fontWeight: "800" }}>総評</Text>
-            <Text style={{ marginTop: 6 }}>{result.summary}</Text>
+            <Text style={{ fontWeight: "800", color: palette.accentText }}>総評</Text>
+            <Text style={{ marginTop: 6, color: palette.text }}>{result.summary}</Text>
           </View>
         </>
       )}
