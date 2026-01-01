@@ -112,15 +112,15 @@ export default function BiasScreen() {
   const result = useMemo(() => buildBias(logs), [logs]);
 
   const cardStyle = {
-    padding: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 24,
     backgroundColor: palette.card,
     borderWidth: 1,
     borderColor: palette.border,
-    shadowColor: "#00000015",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#00000012",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   };
 
   return (
@@ -128,8 +128,8 @@ export default function BiasScreen() {
       style={{ flex: 1, backgroundColor: palette.background }}
       contentContainerStyle={{ padding: 16, gap: 12 }}
     >
-      <Text style={{ fontSize: 22, fontWeight: "800", color: palette.text }}>Bias Check</Text>
-      <Text style={{ color: palette.muted }}>
+      <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>🔍 Bias Check</Text>
+      <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
         観測の傾向をやさしくフィードバックします
       </Text>
 
@@ -138,18 +138,18 @@ export default function BiasScreen() {
       ) : (
         <>
           <View style={cardStyle}>
-            <Text style={{ fontWeight: "800", color: palette.text }}>記録の頻度</Text>
-            <Text style={{ marginTop: 6, color: palette.text }}>{result.frequency}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: palette.text }}>📅 記録の頻度</Text>
+            <Text style={{ marginTop: 8, color: palette.text, lineHeight: 20 }}>{result.frequency}</Text>
           </View>
 
           <View style={cardStyle}>
-            <Text style={{ fontWeight: "800", color: palette.text }}>観測の偏り</Text>
-            <Text style={{ marginTop: 6, color: palette.text }}>{result.bias}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: palette.text }}>🎯 観測の偏り</Text>
+            <Text style={{ marginTop: 8, color: palette.text, lineHeight: 20 }}>{result.bias}</Text>
           </View>
 
           <View style={cardStyle}>
-            <Text style={{ fontWeight: "800", color: palette.text }}>メモの粒度</Text>
-            <Text style={{ marginTop: 6, color: palette.text }}>{result.granularity}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: palette.text }}>📝 メモの粒度</Text>
+            <Text style={{ marginTop: 8, color: palette.text, lineHeight: 20 }}>{result.granularity}</Text>
           </View>
 
           <View
@@ -159,8 +159,8 @@ export default function BiasScreen() {
               marginTop: 6,
             }}
           >
-            <Text style={{ fontWeight: "800", color: palette.accentText }}>総評</Text>
-            <Text style={{ marginTop: 6, color: palette.text }}>{result.summary}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: palette.accentText }}>💡 総評</Text>
+            <Text style={{ marginTop: 8, color: palette.text, lineHeight: 22 }}>{result.summary}</Text>
           </View>
         </>
       )}

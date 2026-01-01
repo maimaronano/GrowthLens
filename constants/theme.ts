@@ -5,40 +5,49 @@
 
 import { Platform } from "react-native";
 
-const tintColorLight = "#f39ac7";
-const tintColorDark = "#ffb8d8";
+// 赤ちゃん向けアプリの配色：柔らかいパステルカラー
+const tintColorLight = "#FF9AA2";  // コーラルピンク（柔らかく温かみのある）
+const tintColorDark = "#FFB3BA";   // ライトコーラル
 
 export const Colors = {
   light: {
-    text: "#3f2f3c",
-    muted: "#7d6b75",
-    background: "#fff7f2",
-    card: "#ffffff",
-    cardSoft: "#fff0f6",
-    border: "#f2dce8",
-    accentSurface: "#ffe5ef",
-    accentText: "#7b294f",
-    danger: "#f9c5c5",
-    dangerBorder: "#f4a3a3",
+    text: "#5A5A5A",              // 柔らかいダークグレー（読みやすく優しい）
+    muted: "#9E9E9E",            // ミディアムグレー
+    background: "#FFF9F5",        // アイボリーベージュ（温かみのある背景）
+    card: "#FFFFFF",             // ピュアホワイト
+    cardSoft: "#FFF4E6",         // ライトピーチ（柔らかいカード背景）
+    border: "#FFE4CC",           // ピーチベージュ（優しいボーダー）
+    accentSurface: "#FFE8D6",    // アプリコットクリーム（アクセント背景）
+    accentText: "#FF7F50",       // コーラルオレンジ（目立つアクセント）
+    primary: "#FFB6B9",          // ベビーピンク（メインカラー）
+    secondary: "#B4E7CE",        // ミントグリーン（サブカラー）
+    tertiary: "#A8D8EA",         // ベビーブルー（第3カラー）
+    sunshine: "#FFF9B0",         // レモンイエロー（ポジティブな要素）
+    danger: "#FFCCCB",           // ライトレッド（優しい警告色）
+    dangerBorder: "#FFB3B3",     // ピンキッシュレッド
     tint: tintColorLight,
-    icon: "#9b7b8b",
-    tabIconDefault: "#c2a9b6",
+    icon: "#B8B8B8",
+    tabIconDefault: "#C5C5C5",
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: "#f4edf0",
-    muted: "#c7b7c2",
-    background: "#201c22",
-    card: "#2b242c",
-    cardSoft: "#332933",
-    border: "#3f313c",
-    accentSurface: "#3a2b33",
-    accentText: "#ffd9e7",
-    danger: "#704848",
-    dangerBorder: "#8c5b5b",
+    text: "#E8E8E8",             // 明るいグレー
+    muted: "#B0B0B0",            // ミディアムグレー
+    background: "#2C2C2E",       // ダークグレー（優しいダーク背景）
+    card: "#3A3A3C",             // ミディアムダークグレー
+    cardSoft: "#48484A",         // ライトダークグレー
+    border: "#58585A",           // グレーボーダー
+    accentSurface: "#4A4446",    // ダークウォーム
+    accentText: "#FFB3BA",       // ライトコーラル
+    primary: "#FF9AA2",          // コーラルピンク
+    secondary: "#8BC1B0",        // ダークミント
+    tertiary: "#7DB8C7",         // ダークブルー
+    sunshine: "#E6DC9A",         // ダークイエロー
+    danger: "#D88A8A",           // ダークレッド
+    dangerBorder: "#B87373",     // ダーカーレッド
     tint: tintColorDark,
-    icon: "#c2a9b6",
-    tabIconDefault: "#9d8a95",
+    icon: "#A0A0A0",
+    tabIconDefault: "#8A8A8A",
     tabIconSelected: tintColorDark,
   },
 };

@@ -29,19 +29,19 @@ function TagSelector({
             key={t}
             onPress={() => onChange(t)}
             style={{
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 999,
-              borderWidth: 1,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+              borderWidth: 2,
               borderColor: active ? palette.tint : palette.border,
               backgroundColor: active ? palette.accentSurface : palette.card,
-              shadowColor: "#00000018",
+              shadowColor: "#00000015",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
+              shadowOpacity: 0.08,
+              shadowRadius: 6,
             }}
           >
-            <Text style={{ color: active ? palette.accentText : palette.text, fontWeight: "700" }}>
+            <Text style={{ color: active ? palette.accentText : palette.text, fontWeight: "700", fontSize: 15 }}>
               {t}
             </Text>
           </Pressable>
@@ -170,15 +170,15 @@ export default function HomeScreen() {
   }
 
   const cardStyle = {
-    padding: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 24,
     backgroundColor: palette.card,
     borderWidth: 1,
     borderColor: palette.border,
-    shadowColor: "#00000015",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#00000012",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   };
 
   return (
@@ -196,14 +196,14 @@ export default function HomeScreen() {
             borderColor: palette.border,
           }}
         >
-          <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>GrowthLens へようこそ</Text>
+          <Text style={{ fontSize: 24, fontWeight: "800", color: palette.text }}>👶 GrowthLens へようこそ</Text>
 
-          <Text style={{ color: palette.muted }}>
+          <Text style={{ color: palette.muted, lineHeight: 22 }}>
             このアプリは、子どもの「できた・できない」ではなく、
             日々のちょっとした変化や気づきを記録するためのものです。
           </Text>
 
-          <Text style={{ color: palette.muted }}>
+          <Text style={{ color: palette.muted, lineHeight: 22 }}>
             ・記録は端末内にのみ保存されます{"\n"}
             ・診断や評価は行いません{"\n"}
             ・比較や共有はありません
@@ -213,24 +213,26 @@ export default function HomeScreen() {
             onPress={onCloseIntro}
             style={{
               backgroundColor: palette.tint,
-              paddingVertical: 10,
-              borderRadius: 12,
+              paddingVertical: 14,
+              borderRadius: 20,
               alignItems: "center",
-              shadowColor: "#00000025",
-              shadowOpacity: 0.15,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
+              shadowColor: "#00000020",
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
             }}
           >
-            <Text style={{ color: palette.card, fontWeight: "800" }}>はじめる</Text>
+            <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>はじめる</Text>
           </Pressable>
         </View>
       )}
 
-      <Text style={{ fontSize: 24, fontWeight: "800", color: palette.text }}>
-        Home（Growth Signal）
+      <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>
+        🏠 ホーム
       </Text>
-      <Text style={{ color: palette.muted }}>タグ＋一言で記録。端末内に保存されます（MVP）</Text>
+      <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
+        赤ちゃんの成長の瞬間を記録しましょう
+      </Text>
 
       <View
         style={{
@@ -240,12 +242,12 @@ export default function HomeScreen() {
           gap: 6,
         }}
       >
-        <Text style={{ fontWeight: "800", color: palette.accentText }}>成長シグナル（簡易）</Text>
-        <Text style={{ marginTop: 6, color: palette.text }}>{signal}</Text>
+        <Text style={{ fontWeight: "800", color: palette.accentText }}>✨ 成長シグナル（簡易）</Text>
+        <Text style={{ marginTop: 6, color: palette.text, lineHeight: 22 }}>{signal}</Text>
       </View>
 
       <View style={{ ...cardStyle, gap: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>今日の記録</Text>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>✏️ 今日の記録</Text>
 
         <Text style={{ fontSize: 13, color: palette.muted }}>写真（仮ラベル・任意）</Text>
         <TextInput
@@ -254,12 +256,13 @@ export default function HomeScreen() {
           placeholder="例：公園の滑り台"
           placeholderTextColor={palette.muted}
           style={{
-            borderWidth: 1,
+            borderWidth: 2,
             borderColor: palette.border,
-            padding: 12,
-            borderRadius: 12,
+            padding: 14,
+            borderRadius: 16,
             backgroundColor: palette.cardSoft,
             color: palette.text,
+            fontSize: 15,
           }}
         />
 
@@ -273,12 +276,13 @@ export default function HomeScreen() {
           placeholder="例：今日は指差しが増えた"
           placeholderTextColor={palette.muted}
           style={{
-            borderWidth: 1,
+            borderWidth: 2,
             borderColor: palette.border,
-            padding: 12,
-            borderRadius: 12,
+            padding: 14,
+            borderRadius: 16,
             backgroundColor: palette.cardSoft,
             color: palette.text,
+            fontSize: 15,
           }}
           multiline
         />
@@ -287,16 +291,16 @@ export default function HomeScreen() {
           onPress={onAdd}
           style={{
             backgroundColor: palette.tint,
-            padding: 14,
-            borderRadius: 14,
+            padding: 16,
+            borderRadius: 20,
             alignItems: "center",
             shadowColor: "#00000020",
-            shadowOpacity: 0.16,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
           }}
         >
-          <Text style={{ color: palette.card, fontWeight: "800" }}>記録する</Text>
+          <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>📝 記録する</Text>
         </Pressable>
 
         {/* 危険操作：全削除（赤） */}
@@ -304,12 +308,12 @@ export default function HomeScreen() {
           onPress={onClearAll}
           disabled={logs.length === 0}
           style={{
-            backgroundColor: logs.length === 0 ? palette.danger : "#f29b9b",
-            padding: 12,
-            borderRadius: 14,
+            backgroundColor: logs.length === 0 ? palette.danger : "#FFCCCB",
+            padding: 14,
+            borderRadius: 20,
             alignItems: "center",
             borderWidth: 1,
-            borderColor: logs.length === 0 ? palette.dangerBorder : "#f07272",
+            borderColor: logs.length === 0 ? palette.dangerBorder : "#FFB3B3",
             opacity: logs.length === 0 ? 0.6 : 1,
           }}
         >
@@ -318,20 +322,20 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ ...cardStyle, gap: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>
-          記録一覧（最新が上）{" "}
-          <Text style={{ color: palette.muted, fontSize: 13 }}>({logs.length}件)</Text>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>
+          📚 記録一覧 {" "}
+          <Text style={{ color: palette.muted, fontSize: 14 }}>({logs.length}件)</Text>
         </Text>
 
         {logs.length === 0 ? (
-          <Text style={{ color: palette.muted }}>まだ記録がありません</Text>
+          <Text style={{ color: palette.muted, lineHeight: 22 }}>まだ記録がありません</Text>
         ) : (
           logs.map((l) => (
             <View
               key={l.id}
               style={{
-                padding: 14,
-                borderRadius: 14,
+                padding: 16,
+                borderRadius: 20,
                 borderWidth: 1,
                 borderColor: palette.border,
                 gap: 6,
@@ -349,16 +353,16 @@ export default function HomeScreen() {
 
               {l.photoLabel ? <Text style={{ color: palette.muted }}>📷 {l.photoLabel}</Text> : null}
 
-              <Text style={{ color: palette.text }}>{l.note}</Text>
+              <Text style={{ color: palette.text, lineHeight: 20 }}>{l.note}</Text>
 
               <Pressable
                 onPress={() => onDeleteOne(l.id)}
                 style={{
                   marginTop: 4,
                   alignSelf: "flex-end",
-                  paddingVertical: 8,
-                  paddingHorizontal: 10,
-                  borderRadius: 10,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 16,
                   backgroundColor: palette.card,
                   borderWidth: 1,
                   borderColor: palette.border,
@@ -371,7 +375,7 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <Text style={{ color: palette.muted, fontSize: 12 }}>
+      <Text style={{ color: palette.muted, fontSize: 12, lineHeight: 18 }}>
         ※ MVP：写真はまだ保存しません（ラベルのみ）。後でカメラ/ギャラリー対応できます。
       </Text>
     </ScrollView>

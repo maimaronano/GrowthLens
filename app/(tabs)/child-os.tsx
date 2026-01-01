@@ -73,7 +73,7 @@ function buildChildOS(logs: GrowthLog[]): ModuleView[] {
   return [
     {
       key: "cog",
-      name: "認知（探索・理解）",
+      name: "🧠 認知（探索・理解）",
       status: statusFromDelta(cognition),
       hint:
         cognition >= 2
@@ -84,31 +84,31 @@ function buildChildOS(logs: GrowthLog[]): ModuleView[] {
     },
     {
       key: "comm",
-      name: "コミュニケーション",
+      name: "💬 コミュニケーション",
       status: statusFromDelta(comm),
       hint: comm >= 2 ? "「ことば」の記録が増加" : comm <= -2 ? "「ことば」が少なめ" : "安定",
     },
     {
       key: "emo",
-      name: "感情・自己主張",
+      name: "❤️ 感情・自己主張",
       status: statusFromDelta(emotion),
       hint: emotion >= 2 ? "自己主張の変化が目立ちます" : emotion <= -2 ? "自己主張が少なめ" : "安定",
     },
     {
       key: "rhythm",
-      name: "生活リズム（睡眠・食事）",
+      name: "🌙 生活リズム（睡眠・食事）",
       status: statusFromDelta(rhythm),
       hint: rhythm >= 2 ? "生活系の観測が増加" : rhythm <= -2 ? "生活系が少なめ" : "安定",
     },
     {
       key: "focus",
-      name: "集中・切替",
+      name: "🎯 集中・切替",
       status: statusFromDelta(focus),
       hint: focus >= 2 ? "集中の場面が増加" : focus <= -2 ? "集中が少なめ" : "安定",
     },
     {
       key: "meta",
-      name: "観測の粒度（親の気づき）",
+      name: "👀 観測の粒度（親の気づき）",
       status: statusFromDelta(metaDelta),
       hint:
         noteDelta >= 20
@@ -154,15 +154,15 @@ export default function ChildOSScreen() {
   const modules = useMemo(() => buildChildOS(logs), [logs]);
 
   const cardStyle = {
-    padding: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 24,
     backgroundColor: palette.card,
     borderWidth: 1,
     borderColor: palette.border,
-    shadowColor: "#00000015",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#00000012",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   };
 
   return (
@@ -170,28 +170,30 @@ export default function ChildOSScreen() {
       style={{ flex: 1, backgroundColor: palette.background }}
       contentContainerStyle={{ padding: 16, gap: 12 }}
     >
-      <Text style={{ fontSize: 22, fontWeight: "800", color: palette.text }}>Child OS</Text>
-      <Text style={{ color: palette.muted }}>Homeの記録から自動生成（直近7日 vs 前7日）</Text>
+      <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>✨ Child OS</Text>
+      <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
+        ホームの記録から自動生成（直近7日 vs 前7日）
+      </Text>
 
       <View style={{ ...cardStyle, backgroundColor: palette.accentSurface }}>
-        <Text style={{ fontWeight: "800", color: palette.accentText }}>ログ件数</Text>
-        <Text style={{ marginTop: 6, color: palette.text }}>
+        <Text style={{ fontSize: 16, fontWeight: "800", color: palette.accentText }}>📊 ログ件数</Text>
+        <Text style={{ marginTop: 6, color: palette.text, fontSize: 18, fontWeight: "700" }}>
           {loaded ? `${logs.length} 件` : "読み込み中..."}
         </Text>
-        <Text style={{ marginTop: 6, color: palette.muted, fontSize: 12 }}>
-          Homeで記録を追加してこのタブを開くと、状態が更新されます
+        <Text style={{ marginTop: 6, color: palette.muted, fontSize: 12, lineHeight: 18 }}>
+          ホームで記録を追加してこのタブを開くと、状態が更新されます
         </Text>
       </View>
 
       {modules.map((m) => (
         <View key={m.key} style={cardStyle}>
-          <Text style={{ fontWeight: "800", color: palette.text }}>{m.name}</Text>
-          <Text style={{ marginTop: 6, fontWeight: "800", color: palette.accentText }}>{m.status}</Text>
-          <Text style={{ marginTop: 6, color: palette.text }}>{m.hint}</Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: palette.text }}>{m.name}</Text>
+          <Text style={{ marginTop: 8, fontSize: 18, fontWeight: "800", color: palette.accentText }}>{m.status}</Text>
+          <Text style={{ marginTop: 6, color: palette.text, lineHeight: 20 }}>{m.hint}</Text>
         </View>
       ))}
 
-      <Text style={{ color: palette.muted, marginTop: 4 }}>
+      <Text style={{ color: palette.muted, marginTop: 4, fontSize: 12, lineHeight: 18 }}>
         ※ MVPはルールベース。後で重み付け/AI要約に進化できます。
       </Text>
     </ScrollView>
