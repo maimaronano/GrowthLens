@@ -2,6 +2,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -166,10 +167,11 @@ export default function ChildOSScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: palette.background }}
-      contentContainerStyle={{ padding: 16, gap: 12 }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }} edges={["top"]}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 12 }}
+      >
       <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>✨ Child OS</Text>
       <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
         ホームの記録から自動生成（直近7日 vs 前7日）
@@ -197,5 +199,6 @@ export default function ChildOSScreen() {
         ※ MVPはルールベース。後で重み付け/AI要約に進化できます。
       </Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }
