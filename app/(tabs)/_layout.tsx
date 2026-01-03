@@ -26,9 +26,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "ホーム",
+          title: "記録",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="bolt.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="growth-diary"
+        options={{
+          title: "成長日記",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="book.fill" color={color} />
           ),
         }}
       />
@@ -36,9 +46,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="child-os"
         options={{
-          title: "成長分析",
+          title: "分析",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="sparkles" color={color} />
+            <IconSymbol size={28} name="chart.bar.fill" color={color} />
           ),
         }}
       />
@@ -46,7 +56,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bias"
         options={{
-          title: "記録傾向",
+          title: "傾向",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="checkmark.seal.fill" color={color} />
           ),
