@@ -1,213 +1,201 @@
 // app/(tabs)/index.tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator } from "react-native";
+// クイック記録画面 - ワンタップで睡眠、おむつ、授乳を記録
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { BannerAdComponent } from "@/components/ads/banner-ad";
 
-import type { GrowthLog, LogTag } from "../../src/domain/log";
-import { STORAGE_KEY_INTRO, TAGS, validateLog, VALIDATION } from "../../src/domain/log";
-import { loadLogs, saveLogs, clearAllLogs } from "../../src/storage/logStorage";
+import type { QuickLog, SleepLog, DiaperLog, FeedingLog, ActiveSleep } from "../../src/domain/quick-log";
+import { generateQuickLogId, calculateDuration, formatDuration, calculateInterval } from "../../src/domain/quick-log";
+import {
+  loadQuickLogs,
+  addQuickLog,
+  saveActiveSleep,
+  loadActiveSleep,
+  getTodayLogs,
+} from "../../src/storage/quickLogStorage";
 
-// ---- UI: Tag selector (button chips) ----
-function TagSelector({
-  value,
-  onChange,
-  palette,
-}: {
-  value: LogTag;
-  onChange: (t: LogTag) => void;
-  palette: (typeof Colors)["light"];
-}) {
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {TAGS.map((t) => {
-        const active = t === value;
-        return (
-          <Pressable
-            key={t}
-            onPress={() => onChange(t)}
-            style={{
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              borderRadius: 24,
-              borderWidth: 2,
-              borderColor: active ? palette.tint : palette.border,
-              backgroundColor: active ? palette.accentSurface : palette.card,
-              shadowColor: "#00000015",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 6,
-            }}
-          >
-            <Text style={{ color: active ? palette.accentText : palette.text, fontWeight: "700", fontSize: 15 }}>
-              {t}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-// ---- Simple signal (MVP) ----
-function makeSimpleSignal(logs: GrowthLog[]) {
-  if (logs.length < 2) return "記録が増えるとシグナルが出ます";
-  const [latest, prev] = logs;
-  if (latest.tag !== prev.tag) return `焦点が「${prev.tag} → ${latest.tag}」に変化`;
-  if ((latest.note?.length ?? 0) > (prev.note?.length ?? 0) + 20)
-    return "観測メモが詳細になっています（気づき↑）";
-  return `「${latest.tag}」が継続しています（安定）`;
-}
-
-// React Native では crypto.randomUUID が無いことがあるので自前ID
-function newId() {
-  return `id-${Date.now()}-${Math.random()}`;
-}
-
-export default function HomeScreen() {
+export default function QuickRecordScreen() {
   const router = useRouter();
-  const [note, setNote] = useState("");
-  const [photoLabel, setPhotoLabel] = useState("");
-  const [tag, setTag] = useState<LogTag>("探索");
   const colorScheme = useColorScheme() ?? "light";
   const palette = Colors[colorScheme];
 
-  const [logs, setLogs] = useState<GrowthLog[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [saving, setSaving] = useState(false); // 連打防止
-  const [error, setError] = useState(""); // エラー表示
+  const [activeSleep, setActiveSleep] = useState<ActiveSleep | null>(null);
+  const [sleepDuration, setSleepDuration] = useState<string>("0分");
+  const [recentLogs, setRecentLogs] = useState<QuickLog[]>([]);
+  const [feedingInterval, setFeedingInterval] = useState<string | null>(null);
+  const [diaperInterval, setDiaperInterval] = useState<string | null>(null);
 
-  // 初回起動説明カード
-  const [showIntro, setShowIntro] = useState(false);
-
-  // ログを読み込む関数
-  const reloadLogs = useCallback(async () => {
+  // データを読み込む
+  const loadData = useCallback(async () => {
     try {
-      const data = await loadLogs();
-      setLogs(data);
-    } catch (e) {
-      console.warn("Failed to load logs:", e);
+      const [active, logs] = await Promise.all([
+        loadActiveSleep(),
+        getTodayLogs(),
+      ]);
+
+      setActiveSleep(active);
+      setRecentLogs(logs);
+
+      // 授乳とおむつの前回からの間隔を計算
+      const allLogs = await loadQuickLogs();
+      const feedingLogs = allLogs.filter(log => log.type === "feeding");
+      const diaperLogs = allLogs.filter(log => log.type === "diaper");
+
+      if (feedingLogs.length > 0) {
+        const lastFeeding = new Date(feedingLogs[0].timestamp).getTime();
+        const interval = Date.now() - lastFeeding;
+        setFeedingInterval(formatDuration(interval));
+      }
+
+      if (diaperLogs.length > 0) {
+        const lastDiaper = new Date(diaperLogs[0].timestamp).getTime();
+        const interval = Date.now() - lastDiaper;
+        setDiaperInterval(formatDuration(interval));
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error);
     }
   }, []);
 
-  // 起動時：端末から読み込み（logs + introSeen）
+  // 初回読み込み
   useEffect(() => {
-    (async () => {
-      try {
-        await reloadLogs();
-        const introSeen = await AsyncStorage.getItem(STORAGE_KEY_INTRO);
-        if (!introSeen) setShowIntro(true);
-      } catch (e) {
-        console.warn("Failed to load logs:", e);
-      } finally {
-        setIsLoaded(true);
-      }
-    })();
-  }, [reloadLogs]);
+    loadData();
+  }, [loadData]);
 
-  // タブを開くたびに再読み込み（編集画面から戻ってきた時に反映）
+  // タブにフォーカスしたら再読み込み
   useFocusEffect(
     useCallback(() => {
-      if (isLoaded) {
-        reloadLogs();
-      }
-    }, [isLoaded, reloadLogs])
+      loadData();
+    }, [loadData])
   );
 
-  const signal = useMemo(() => makeSimpleSignal(logs), [logs]);
-
-  const onCloseIntro = async () => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY_INTRO, "true");
-    } finally {
-      setShowIntro(false);
-    }
-  };
-
-  const onAdd = async () => {
-    if (saving) return; // 連打防止
-
-    setError(""); // エラーをクリア
-
-    // バリデーション
-    const validation = validateLog({ note, photoLabel, tag });
-    if (!validation.valid) {
-      setError(validation.error || "入力内容を確認してください");
+  // 睡眠中の経過時間を更新
+  useEffect(() => {
+    if (!activeSleep) {
+      setSleepDuration("0分");
       return;
     }
 
-    setSaving(true);
+    const updateDuration = () => {
+      const duration = calculateDuration(activeSleep.startTime);
+      setSleepDuration(formatDuration(duration));
+    };
+
+    updateDuration();
+    const interval = setInterval(updateDuration, 60000); // 1分ごとに更新
+
+    return () => clearInterval(interval);
+  }, [activeSleep]);
+
+  // 触覚フィードバック
+  const hapticFeedback = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  // 睡眠記録
+  const onSleepAction = async (action: "寝た" | "起きた") => {
+    hapticFeedback();
+
     try {
-      const newLog: GrowthLog = {
-        id: newId(),
-        createdAt: new Date().toISOString(),
-        tag,
-        note: note.trim(),
-        photoLabel: photoLabel.trim() || undefined,
-      };
+      if (action === "寝た") {
+        const newSleep: ActiveSleep = {
+          id: generateQuickLogId(),
+          startTime: new Date().toISOString(),
+        };
+        await saveActiveSleep(newSleep);
+        setActiveSleep(newSleep);
 
-      const updatedLogs = [newLog, ...logs];
-      await saveLogs(updatedLogs);
-      setLogs(updatedLogs);
+        const log: SleepLog = {
+          id: newSleep.id,
+          type: "sleep",
+          action: "寝た",
+          timestamp: newSleep.startTime,
+        };
+        await addQuickLog(log);
+      } else {
+        if (!activeSleep) {
+          Alert.alert("エラー", "進行中の睡眠がありません");
+          return;
+        }
 
-      // 入力リセット
-      setNote("");
-      setPhotoLabel("");
-      setTag("探索");
-      setError("");
-    } catch (e: any) {
-      console.error("Failed to save log:", e);
-      setError(e.message || "保存に失敗しました。もう一度お試しください。");
-    } finally {
-      setSaving(false);
+        const endTime = new Date().toISOString();
+        const duration = calculateDuration(activeSleep.startTime, endTime);
+
+        const log: SleepLog = {
+          id: generateQuickLogId(),
+          type: "sleep",
+          action: "起きた",
+          timestamp: endTime,
+          duration,
+        };
+        await addQuickLog(log);
+        await saveActiveSleep(null);
+        setActiveSleep(null);
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error("Failed to save sleep log:", error);
+      Alert.alert("エラー", "記録の保存に失敗しました");
     }
   };
 
-  const onClearAll = () => {
-    if (logs.length === 0) return;
+  // おむつ記録
+  const onDiaperRecord = async (diaperType: "おしっこ" | "うんち" | "両方") => {
+    hapticFeedback();
 
-    Alert.alert(
-      "すべて削除しますか？",
-      "この操作は取り消せません。端末内の記録がすべて削除されます。",
-      [
-        { text: "キャンセル", style: "cancel" },
-        {
-          text: "すべて削除",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearAllLogs();
-              setLogs([]);
-            } catch (e) {
-              console.error("Failed to clear logs:", e);
-              Alert.alert("エラー", "削除に失敗しました");
-            }
-          },
-        },
-      ]
-    );
+    try {
+      const log: DiaperLog = {
+        id: generateQuickLogId(),
+        type: "diaper",
+        diaperType,
+        timestamp: new Date().toISOString(),
+      };
+      await addQuickLog(log);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to save diaper log:", error);
+      Alert.alert("エラー", "記録の保存に失敗しました");
+    }
   };
 
-  const onLogPress = (logId: string) => {
-    router.push(`/log-detail?id=${logId}`);
+  // 授乳記録
+  const onFeedingRecord = async (feedingType: "左" | "右" | "ミルク") => {
+    hapticFeedback();
+
+    try {
+      const log: FeedingLog = {
+        id: generateQuickLogId(),
+        type: "feeding",
+        feedingType,
+        timestamp: new Date().toISOString(),
+      };
+      await addQuickLog(log);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to save feeding log:", error);
+      Alert.alert("エラー", "記録の保存に失敗しました");
+    }
   };
 
-  if (!isLoaded) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>
-        <View style={{ flex: 1, padding: 16, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color={palette.tint} />
-          <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "700", color: palette.text }}>読み込み中...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const buttonStyle = (isActive = false) => ({
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: isActive ? palette.tint : palette.border,
+    backgroundColor: isActive ? palette.accentSurface : palette.card,
+    shadowColor: "#00000015",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    alignItems: "center" as const,
+  });
 
   const cardStyle = {
     padding: 20,
@@ -225,222 +213,185 @@ export default function HomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }} edges={["top"]}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 14 }}
+        contentContainerStyle={{ padding: 16, gap: 16 }}
       >
-      {/* 初回起動の説明カード */}
-      {showIntro && (
-        <View
-          style={{
-            ...cardStyle,
-            gap: 12,
-            backgroundColor: palette.cardSoft,
-            borderColor: palette.border,
-          }}
-        >
-          <Text style={{ fontSize: 24, fontWeight: "800", color: palette.text }}>👶 GrowthLens へようこそ</Text>
-
-          <Text style={{ color: palette.muted, lineHeight: 22 }}>
-            このアプリは、子どもの「できた・できない」ではなく、
-            日々のちょっとした変化や気づきを記録するためのものです。
-          </Text>
-
-          <Text style={{ color: palette.muted, lineHeight: 22 }}>
-            ・記録は端末内にのみ保存されます{"\n"}
-            ・診断や評価は行いません{"\n"}
-            ・比較や共有はありません
-          </Text>
-
-          <Pressable
-            onPress={onCloseIntro}
-            style={{
-              backgroundColor: palette.tint,
-              paddingVertical: 14,
-              borderRadius: 20,
-              alignItems: "center",
-              shadowColor: "#00000020",
-              shadowOpacity: 0.12,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-            }}
-          >
-            <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>はじめる</Text>
-          </Pressable>
-        </View>
-      )}
-
-      <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>
-        🏠 ホーム
-      </Text>
-      <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
-        赤ちゃんの成長の瞬間を記録しましょう
-      </Text>
-
-      {/* バナー広告 */}
-      <BannerAdComponent />
-
-      <View
-        style={{
-          ...cardStyle,
-          backgroundColor: palette.accentSurface,
-          borderColor: palette.border,
-          gap: 6,
-        }}
-      >
-        <Text style={{ fontWeight: "800", color: palette.accentText }}>✨ 成長シグナル（簡易）</Text>
-        <Text style={{ marginTop: 6, color: palette.text, lineHeight: 22 }}>{signal}</Text>
-      </View>
-
-      {/* エラー表示 */}
-      {error ? (
-        <View style={{ ...cardStyle, backgroundColor: palette.danger, borderColor: palette.dangerBorder }}>
-          <Text style={{ color: palette.text, fontWeight: "700" }}>⚠️ {error}</Text>
-        </View>
-      ) : null}
-
-      <View style={{ ...cardStyle, gap: 12 }}>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>✏️ 今日の記録</Text>
-
-        <Text style={{ fontSize: 13, color: palette.muted }}>写真（仮ラベル・任意）</Text>
-        <TextInput
-          value={photoLabel}
-          onChangeText={setPhotoLabel}
-          placeholder="例：公園の滑り台"
-          placeholderTextColor={palette.muted}
-          maxLength={VALIDATION.PHOTO_LABEL_MAX_LENGTH}
-          editable={!saving}
-          style={{
-            borderWidth: 2,
-            borderColor: palette.border,
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: palette.cardSoft,
-            color: palette.text,
-            fontSize: 15,
-          }}
-        />
-        <Text style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
-          {photoLabel.length}/{VALIDATION.PHOTO_LABEL_MAX_LENGTH}
+        <Text style={{ fontSize: 28, fontWeight: "800", color: palette.text, letterSpacing: 0.5 }}>
+          ⚡ クイック記録
+        </Text>
+        <Text style={{ fontSize: 15, color: palette.muted, lineHeight: 22 }}>
+          ワンタップで記録。詳細は後から追加できます
         </Text>
 
-        <Text style={{ fontSize: 13, color: palette.muted }}>タグ</Text>
-        <TagSelector value={tag} onChange={setTag} palette={palette} />
-
-        <Text style={{ fontSize: 13, color: palette.muted }}>一言メモ（必須）</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          placeholder="例：今日は指差しが増えた"
-          placeholderTextColor={palette.muted}
-          maxLength={VALIDATION.NOTE_MAX_LENGTH}
-          editable={!saving}
-          style={{
-            borderWidth: 2,
-            borderColor: palette.border,
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: palette.cardSoft,
-            color: palette.text,
-            fontSize: 15,
-          }}
-          multiline
-        />
-        <Text style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
-          {note.length}/{VALIDATION.NOTE_MAX_LENGTH}
-        </Text>
-
-        <Pressable
-          onPress={onAdd}
-          disabled={saving}
-          style={{
-            backgroundColor: saving ? palette.border : palette.tint,
-            padding: 16,
-            borderRadius: 20,
-            alignItems: "center",
-            shadowColor: "#00000020",
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "800" }}>📝 記録する</Text>
-          )}
-        </Pressable>
-
-        {/* 危険操作：全削除（赤） */}
-        <Pressable
-          onPress={onClearAll}
-          disabled={logs.length === 0 || saving}
-          style={{
-            backgroundColor: logs.length === 0 ? palette.danger : "#FFCCCB",
-            padding: 14,
-            borderRadius: 20,
-            alignItems: "center",
-            borderWidth: 1,
-            borderColor: logs.length === 0 ? palette.dangerBorder : "#FFB3B3",
-            opacity: logs.length === 0 || saving ? 0.6 : 1,
-          }}
-        >
-          <Text style={{ color: palette.text, fontWeight: "800" }}>すべて削除</Text>
-        </Pressable>
-      </View>
-
-      <View style={{ ...cardStyle, gap: 12 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>
-            📚 記録一覧 {" "}
-            <Text style={{ color: palette.muted, fontSize: 14 }}>({logs.length}件)</Text>
-          </Text>
-          <Pressable onPress={() => router.push("/log-list")}>
-            <Text style={{ color: palette.tint, fontSize: 14, fontWeight: "700" }}>すべて表示 →</Text>
-          </Pressable>
-        </View>
-
-        {logs.length === 0 ? (
-          <Text style={{ color: palette.muted, lineHeight: 22 }}>まだ記録がありません</Text>
-        ) : (
-          logs.map((l) => (
-            <Pressable
-              key={l.id}
-              onPress={() => onLogPress(l.id)}
-              style={{
-                padding: 16,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: palette.border,
-                gap: 6,
-                backgroundColor: palette.cardSoft,
-              }}
-            >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-                <Text style={{ color: palette.muted, fontSize: 12 }}>
-                  {new Date(l.createdAt).toLocaleString("ja-JP")}
-                </Text>
-                <Text style={{ color: palette.accentText, fontSize: 12, fontWeight: "800" }}>
-                  {l.tag}
-                </Text>
-              </View>
-
-              {l.photoLabel ? <Text style={{ color: palette.muted }}>📷 {l.photoLabel}</Text> : null}
-
-              <Text style={{ color: palette.text, lineHeight: 20 }} numberOfLines={2}>
-                {l.note}
+        {/* 睡眠記録 */}
+        <View style={{ ...cardStyle, gap: 12 }}>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>😴 睡眠</Text>
+          
+          {activeSleep && (
+            <View style={{ padding: 12, backgroundColor: palette.accentSurface, borderRadius: 12 }}>
+              <Text style={{ fontSize: 14, color: palette.accentText, fontWeight: "700" }}>
+                💤 睡眠中： {sleepDuration}
               </Text>
+            </View>
+          )}
 
-              <Text style={{ color: palette.tint, fontSize: 12, fontWeight: "700", marginTop: 4 }}>
-                タップして編集 →
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              onPress={() => onSleepAction("寝た")}
+              disabled={!!activeSleep}
+              style={{ flex: 1, ...buttonStyle(!activeSleep) }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: activeSleep ? palette.muted : palette.text }}>
+                😴 寝た
               </Text>
             </Pressable>
-          ))
-        )}
-      </View>
 
-      <Text style={{ color: palette.muted, fontSize: 12, lineHeight: 18 }}>
-        ※ MVP：写真はまだ保存しません（ラベルのみ）。後でカメラ/ギャラリー対応できます。
-      </Text>
-    </ScrollView>
+            <Pressable
+              onPress={() => onSleepAction("起きた")}
+              disabled={!activeSleep}
+              style={{ flex: 1, ...buttonStyle(!!activeSleep) }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: !activeSleep ? palette.muted : palette.text }}>
+                😊 起きた
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* おむつ記録 */}
+        <View style={{ ...cardStyle, gap: 12 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>🩲 おむつ</Text>
+            {diaperInterval && (
+              <Text style={{ fontSize: 12, color: palette.muted }}>前回から {diaperInterval}</Text>
+            )}
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              onPress={() => onDiaperRecord("おしっこ")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>💧</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                おしっこ
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => onDiaperRecord("うんち")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>💩</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                うんち
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => onDiaperRecord("両方")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>💧💩</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                両方
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 授乳記録 */}
+        <View style={{ ...cardStyle, gap: 12 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>🍼 授乳</Text>
+            {feedingInterval && (
+              <Text style={{ fontSize: 12, color: palette.muted }}>前回から {feedingInterval}</Text>
+            )}
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              onPress={() => onFeedingRecord("左")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>👈</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                左
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => onFeedingRecord("右")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>👉</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                右
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => onFeedingRecord("ミルク")}
+              style={{ flex: 1, ...buttonStyle() }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: palette.text }}>🍼</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: palette.text, marginTop: 4 }}>
+                ミルク
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 今日の記録 */}
+        <View style={{ ...cardStyle, gap: 12 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: palette.text }}>
+              📋 今日の記録 ({recentLogs.length}件)
+            </Text>
+            <Pressable onPress={() => router.push("/quick-log-list")}>
+              <Text style={{ color: palette.tint, fontSize: 14, fontWeight: "700" }}>すべて表示 →</Text>
+            </Pressable>
+          </View>
+
+          {recentLogs.length === 0 ? (
+            <Text style={{ color: palette.muted, textAlign: "center", paddingVertical: 16 }}>
+              まだ記録がありません
+            </Text>
+          ) : (
+            recentLogs.slice(0, 5).map((log) => (
+              <View
+                key={log.id}
+                style={{
+                  padding: 12,
+                  backgroundColor: palette.cardSoft,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: palette.text }}>
+                    {log.type === "sleep" && `😴 ${log.action}`}
+                    {log.type === "diaper" && `🩲 ${log.diaperType}`}
+                    {log.type === "feeding" && `🍼 ${log.feedingType}`}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: palette.muted, marginTop: 2 }}>
+                    {new Date(log.timestamp).toLocaleTimeString("ja-JP", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </View>
+                {log.type === "sleep" && log.duration && (
+                  <Text style={{ fontSize: 12, color: palette.accentText, fontWeight: "700" }}>
+                    {formatDuration(log.duration)}
+                  </Text>
+                )}
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
